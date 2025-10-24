@@ -1,9 +1,19 @@
+# Project-specific 
 logs/
 server_files/
-*.pyc
-__pycache__/
 
-.history/
-
+# Environment variables 
 .env
-PROJECT_SPEC.md
+
+# Editor-specific
+.history/
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS-specific 
+.DS_Store
+Thumbs.db
