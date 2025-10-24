@@ -1,0 +1,9 @@
+logs/
+server_files/
+*.pyc
+__pycache__/
+
+.history/
+
+.env
+PROJECT_SPEC.md
