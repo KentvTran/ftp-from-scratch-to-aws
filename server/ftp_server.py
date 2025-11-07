@@ -1,7 +1,7 @@
 import os, socket, threading, time
 
-HOST = "0.0.0.0"
-CONTROL_PORT = 2121
+HOST = "127.0.0.1"  # localhost
+CONTROL_PORT = 2121  # Local testing port
 BUFFER_SIZE = 4096
 
 BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "server_files")
@@ -85,6 +85,9 @@ def handle_put(ctrl, fn, nbytes):
 
 def handle_client(c, addr):
     try:
+        # Send welcome message
+        send_line(c, "220 Welcome to Simple FTP Server")
+        
         while True:
             buf = b""
             while not buf.endswith(b"\n"):
@@ -104,9 +107,11 @@ def handle_client(c, addr):
             elif cmd == "PUT" and len(parts) >= 4 and parts[2].upper() == "SIZE":
                 handle_put(c, parts[1], parts[3])
             elif cmd == "EXIT":
+                send_line(c, "221 Goodbye")
                 return
             else:
-                send_line(c, "550 Bad command")
+                # Echo back the received command
+                send_line(c, f"200 Echo: {line}")
     finally:
         try: c.close()
         except: pass
