@@ -47,12 +47,12 @@ Example Test Sequence:
 
 Features Implemented:
 ---------------------
-✓ Separate control (port 2121) and data (ports 20000-21000) connections
-✓ GET command for downloading files
-✓ PUT command for uploading files
-✓ LS command for listing server files
-✓ Error handling (550 File Not Found)
-✓ Proper response codes:
+ Separate control (port 2121) and data (ports 20000-21000) connections
+ GET command for downloading files
+ PUT command for uploading files
+ LS command for listing server files
+ Error handling (550 File Not Found)
+ Proper response codes:
   - 220 Welcome to Simple FTP Server
   - 200 OK (command accepted)
   - 226 Transfer complete
@@ -67,8 +67,8 @@ Technical Details:
 
 Tested and Verified:
 --------------------
-✓ Small files (1.4KB) - Upload/Download working
-✓ Medium files (1MB) - Upload/Download working
-✓ Large files (10MB) - Upload/Download working
-✓ Error handling - 550 errors for missing files
-✓ File integrity - No corruption during transfers
+ Small files (1.4KB) - Upload/Download working
+ Medium files (1MB) - Upload/Download working
+ Large files (10MB) - Upload/Download working
+ Error handling - 550 errors for missing files
+ File integrity - No corruption during transfers
