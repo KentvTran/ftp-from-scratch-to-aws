@@ -9,6 +9,11 @@ class ControlConn:
 
     def __enter__(self):
         self.sock.connect(self.addr)
+        # Read and discard the welcome banner (220 Welcome message)
+        # This synchronizes the protocol - server sends welcome immediately on connect
+        welcome_banner = self.recv_line()
+        # Optional: uncomment to display welcome message
+        # print(f"[SERVER] {welcome_banner}")
         return self
 
     def __exit__(self, a, b, c):

@@ -14,9 +14,14 @@ def send_line(sock, s):
 
 def open_data_listener():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))      # 빈 포트 자동 할당
-    s.listen(1)
-    return s, s.getsockname()[1]
+    for port in range(20000, 21000):
+        try:
+            s.bind(("", port))
+            s.listen(1)
+            return s, port
+        except OSError:
+            continue
+    raise Exception("No available data ports in range 20000-21000")
 
 def handle_ls(ctrl):
     d, port = open_data_listener()
