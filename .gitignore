@@ -1,0 +1,19 @@
+# Project-specific 
+logs/
+server_files/
+
+# Environment variables 
+.env
+
+# Editor-specific
+.history/
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS-specific 
+.DS_Store
+Thumbs.db
