@@ -1,6 +1,7 @@
 # Project-specific 
 logs/
 server_files/
+client_download_*
 
 # Environment variables 
 .env
