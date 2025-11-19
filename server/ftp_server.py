@@ -1,4 +1,5 @@
 import os, socket, threading, time
+from collections import defaultdict
 
 # Server binds to all interfaces so external AWS clients can connect.
 # Port 2121 is chosen so the process can run without sudo (ports <1024 require root).
@@ -14,6 +15,7 @@ os.makedirs(os.path.abspath(BASE_DIR), exist_ok=True)
 # Thread-safe round-robin allocator for passive data ports (range matches AWS SG rules).
 _port_lock = threading.Lock()
 _next_port = DATA_PORT_MIN
+_file_locks = defaultdict(threading.Lock)
 
 def send_line(sock, s):
     if not s.endswith("\n"):
@@ -44,10 +46,14 @@ def open_data_listener():
     raise Exception("No available data ports in range 20000-21000")
 
 def handle_ls(ctrl):
-    d, port = open_data_listener()
-    send_line(ctrl, f"200 OK PORT {port}")
-    data_sock, _ = d.accept()
     try:
+        d, port = open_data_listener()
+    except Exception:
+        send_line(ctrl, "425 Can't open data connection")
+        return
+    send_line(ctrl, f"200 OK PORT {port}")
+    try:
+        data_sock, _ = d.accept()
         rows = []
         for name in os.listdir(BASE_DIR):
             path = os.path.join(BASE_DIR, name)
@@ -58,7 +64,10 @@ def handle_ls(ctrl):
         text = ("\n".join(rows) + "\n") if rows else ""
         data_sock.sendall(text.encode("utf-8"))
     finally:
-        data_sock.close()
+        try:
+            data_sock.close()
+        except:
+            pass
         d.close()
     send_line(ctrl, "226 Listing complete")
 
@@ -69,10 +78,14 @@ def handle_get(ctrl, fn):
         send_line(ctrl, "550 File not found")
         return
     size = os.path.getsize(path)
-    d, port = open_data_listener()
-    send_line(ctrl, f"200 OK PORT {port} SIZE {size}")
-    data_sock, _ = d.accept()
     try:
+        d, port = open_data_listener()
+    except Exception:
+        send_line(ctrl, "425 Can't open data connection")
+        return
+    send_line(ctrl, f"200 OK PORT {port} SIZE {size}")
+    try:
+        data_sock, _ = d.accept()
         with open(path, "rb") as f:
             while True:
                 chunk = f.read(BUFFER_SIZE)
@@ -80,7 +93,10 @@ def handle_get(ctrl, fn):
                     break
                 data_sock.sendall(chunk)
     finally:
-        data_sock.close()
+        try:
+            data_sock.close()
+        except:
+            pass
         d.close()
     send_line(ctrl, "226 Transfer complete")
 
@@ -88,25 +104,44 @@ def handle_put(ctrl, fn, nbytes):
     name = os.path.basename(fn)
     path = os.path.join(BASE_DIR, name)
     n = int(nbytes)
-    d, port = open_data_listener()
-    send_line(ctrl, f"200 OK PORT {port}")
-    data_sock, _ = d.accept()
-    got = 0
+    lock = _file_locks[name]
+    if not lock.acquire(blocking=False):
+        send_line(ctrl, "550 File is currently being uploaded")
+        return
     try:
-        with open(path, "wb") as f:
-            while got < n:
-                chunk = data_sock.recv(min(BUFFER_SIZE, n - got))
-                if not chunk:
-                    break
-                f.write(chunk)
-                got += len(chunk)
+        try:
+            d, port = open_data_listener()
+        except Exception:
+            send_line(ctrl, "425 Can't open data connection")
+            return
+        send_line(ctrl, f"200 OK PORT {port}")
+        try:
+            data_sock, _ = d.accept()
+            got = 0
+            tmp_path = f"{path}.upload.{threading.get_ident()}"
+            with open(tmp_path, "wb") as f:
+                while got < n:
+                    chunk = data_sock.recv(min(BUFFER_SIZE, n - got))
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    got += len(chunk)
+        finally:
+            try:
+                data_sock.close()
+            except:
+                pass
+            d.close()
+        if got == n:
+            os.replace(tmp_path, path)
+            send_line(ctrl, "226 File stored")
+        else:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            send_line(ctrl, "550 Incomplete upload")
     finally:
-        data_sock.close()
-        d.close()
-    if got == n:
-        send_line(ctrl, "226 File stored")
-    else:
-        send_line(ctrl, "550 Incomplete upload")
+        lock.release()
+            
 
 def handle_client(c, addr):
     try:
@@ -135,8 +170,7 @@ def handle_client(c, addr):
                 send_line(c, "221 Goodbye")
                 return
             else:
-                # Echo back the received command
-                send_line(c, f"200 Echo: {line}")
+                send_line(c, "500 Unknown command")
     finally:
         try: c.close()
         except: pass

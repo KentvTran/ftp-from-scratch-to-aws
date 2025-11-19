@@ -14,7 +14,7 @@ except ModuleNotFoundError:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from shared import protocol
 
-def do_ls(ctrl):
+def do_ls(ctrl, server_host):
     # 기대 응답: "200 OK PORT <p>" → 데이터 소켓으로 목록 → "226 ..."
     ctrl.send_line("LS")
     first = ctrl.recv_line()
@@ -31,7 +31,7 @@ def do_ls(ctrl):
         return
 
     try:
-        ds = open_data_conn(HOST, p)
+        ds = open_data_conn(server_host, p)
         buf = b""
         while True:
             chunk = ds.recv(BUFFER_SIZE)
@@ -52,7 +52,7 @@ def do_ls(ctrl):
     if not last.startswith(protocol.DONE):
         print("[WARN] expected 226, got:", last)
 
-def do_get(ctrl, filename):
+def do_get(ctrl, filename, server_host):
     # 기대 응답: "200 OK PORT <p> SIZE <n>" → 데이터 소켓으로 n바이트 수신 → "226 ..."
     ctrl.send_line(f"GET {filename}")
     first = ctrl.recv_line()
@@ -70,7 +70,7 @@ def do_get(ctrl, filename):
 
     got = 0
     try:
-        ds = open_data_conn(HOST, p)
+        ds = open_data_conn(server_host, p)
         out_name = os.path.basename(filename)
         with open(out_name, "wb") as f:
             while got < n:
@@ -90,7 +90,7 @@ def do_get(ctrl, filename):
     else:
         print("[WARN] expected 226, got:", last)
 
-def do_put(ctrl, filename):
+def do_put(ctrl, filename, server_host):
     # 기대 흐름: "PUT <f> SIZE <n>" → 서버 "200 OK PORT <p>" → 데이터 소켓으로 전송 → "226 ..."
     size = os.path.getsize(filename)
     ctrl.send_line(f"PUT {filename} SIZE {size}")
@@ -108,7 +108,7 @@ def do_put(ctrl, filename):
 
     sent = 0
     try:
-        ds = open_data_conn(HOST, p)
+        ds = open_data_conn(server_host, p)
         with open(filename, "rb") as f:
             while True:
                 chunk = f.read(BUFFER_SIZE)
@@ -148,11 +148,11 @@ def repl(host, port):
                     print("Bye.")
                     break
                 elif cmd == "LS":
-                    do_ls(ctrl)
+                    do_ls(ctrl, host)
                 elif cmd == "GET":
-                    do_get(ctrl, args["filename"])
+                    do_get(ctrl, args["filename"], host)
                 elif cmd == "PUT":
-                    do_put(ctrl, args["filename"])
+                    do_put(ctrl, args["filename"], host)
                 else:
                     print("[ERR] unsupported:", cmd)
     except Exception as e:
