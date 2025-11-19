@@ -1,21 +1,16 @@
 # FTP Server Project - Part 1
-===========================
 
 ## Team Members and Contact Information:
---------------------------------------
 * Joshua [Jlopez0627@csu.fullerton.edu]: Protocol/Architecture Lead
 * Jamie [jjcastillojr21@csu.fullerton.edu]: Server Developer
 * Chanho [chanho0323@csu.fullerton.edu]: Client Developer
-* Kent [kentvtran@csu.fullerton.edu]: AWS/Deployment Engineer (Gatekeeper)
+* Kent [kentvtran@csu.fullerton.edu]: AWS/Deployment Engineer
 * Sean [Sdle@csu.fullerton.edu]: Testing/Documentation Lead
 
 ## Programming Language:
----------------------
 Python 3
 
 ## How to Execute:
----------------
-
 1.  **Start the Server (Terminal 1):**
     ```bash
     $ cd p1-[userid]
@@ -39,7 +34,6 @@ Python 3
     * `EXIT` - Close connection
 
 ## Special Notes About This Submission:
--------------------------------------
 
 1.  **Port Configuration:**
     * Control connection uses port 2121 (instead of standard port 21)
@@ -58,7 +52,6 @@ Python 3
     * No third-party packages required
 
 ## Testing:
---------
 
 Test files are located in `tests/test_data/`:
 * `small.txt` (1.4KB)
@@ -74,7 +67,6 @@ Test files are located in `tests/test_data/`:
 * EXIT
 
 ## Features Implemented:
----------------------
 * Separate control (port 2121) and data (ports 20000-21000) connections
 * `GET` command for downloading files
 * `PUT` command for uploading files
@@ -87,7 +79,6 @@ Test files are located in `tests/test_data/`:
     * 550 File not found/error
 
 ## Technical Details:
-------------------
 * Server stores uploaded files in `server_files/` directory
 * Client downloads files to current directory
 * Data connections use ephemeral ports in range 20000-21000
@@ -95,7 +86,6 @@ Test files are located in `tests/test_data/`:
 * Server uses threading to support multiple concurrent clients
 
 ## Tested and Verified:
---------------------
 * Small files (1.4KB) - Upload/Download working
 * Medium files (1MB) - Upload/Download working
 * Large files (10MB) - Upload/Download working
@@ -103,7 +93,6 @@ Test files are located in `tests/test_data/`:
 * File integrity - No corruption during transfers
 
 ## Protocol Specification:
------------------------
 
 **Control Connection:**
 * **Port:** 2121
@@ -116,7 +105,6 @@ Test files are located in `tests/test_data/`:
 * Server assigns ephemeral port and sends to client via control connection
 
 ## Implementation Notes:
----------------------
 1.  The server uses threading to support multiple concurrent clients (ready for Part 2)
 2.  Client handles welcome banner (220) upon connection for protocol synchronization
 3.  All file transfers include size verification to ensure data integrity
