@@ -1,11 +1,19 @@
 import os, socket, threading, time
 
-HOST = "0.0.0.0"  # Accept connections from any interface
-CONTROL_PORT = int(os.environ.get('FTP_PORT', 2121))  # Default 2121 local, use FTP_PORT=21 for AWS
+# Server binds to all interfaces so external AWS clients can connect.
+# Port 2121 is chosen so the process can run without sudo (ports <1024 require root).
+HOST = os.environ.get("FTP_HOST", "0.0.0.0")
+CONTROL_PORT = int(os.environ.get("FTP_PORT", 2121))
 BUFFER_SIZE = 4096
+DATA_PORT_MIN = 20000
+DATA_PORT_MAX = 21000
 
 BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "server_files")
 os.makedirs(os.path.abspath(BASE_DIR), exist_ok=True)
+
+# Thread-safe round-robin allocator for passive data ports (range matches AWS SG rules).
+_port_lock = threading.Lock()
+_next_port = DATA_PORT_MIN
 
 def send_line(sock, s):
     if not s.endswith("\n"):
@@ -13,14 +21,26 @@ def send_line(sock, s):
     sock.sendall(s.encode("utf-8"))
 
 def open_data_listener():
+    """
+    Open a passive data socket bound to the next available port in the 20000-21000 range.
+    Uses a lock to ensure multiple client threads do not race for the same port.
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    for port in range(20000, 21000):
+    attempts = DATA_PORT_MAX - DATA_PORT_MIN + 1
+    for _ in range(attempts):
+        with _port_lock:
+            global _next_port
+            port = _next_port
+            _next_port += 1
+            if _next_port > DATA_PORT_MAX:
+                _next_port = DATA_PORT_MIN
         try:
             s.bind(("", port))
             s.listen(1)
             return s, port
         except OSError:
             continue
+    s.close()
     raise Exception("No available data ports in range 20000-21000")
 
 def handle_ls(ctrl):

@@ -40,7 +40,8 @@ Python 3 (Standard Library Only)
 
 **Connect Client:**
 ```bash
-./run_client.sh <EC2_IP> 21
+./run_client.sh <EC2_IP> 2121
+# Port 2121 is used (instead of privileged port 21) so the server can run without sudo.
 ```
 
 **Stop Server:**
@@ -57,11 +58,11 @@ Python 3 (Standard Library Only)
 
 ## AWS Configuration
 
-- **Instance:** t2.micro (Amazon Linux 2023)
+- **Instance:** t3.micro (Amazon Linux 2023) - Free Tier eligible (750 hrs/mo)
 - **Region:** us-east-1
-- **Control Port:** 21
+- **Control Port:** 2121 (non-privileged port chosen to avoid sudo/root requirements)
 - **Data Ports:** 20000-21000
-- **Security Group:** Ports 22, 21, 20000-21000 open
+- **Security Group:** Ports 22, 2121, 20000-21000 open
 
 ---
 
@@ -79,7 +80,7 @@ Python 3 (Standard Library Only)
 - Separate control and data connections per client
 
 **Protocol:**
-- Control connection: Port 21 (AWS) / 2121 (local)
+- Control connection: Port 2121 (AWS + local). Setting `FTP_PORT` allows overriding if needed.
 - Data connections: Ephemeral ports 20000-21000
 - Response codes: 200 (OK), 226 (Complete), 550 (Error)
 
@@ -92,20 +93,20 @@ Open 3+ terminals simultaneously:
 
 **Terminal 1:**
 ```bash
-./run_client.sh <EC2_IP> 21
+./run_client.sh <EC2_IP> 2121
 > PUT tests/test_data/small.txt
 ```
 
 **Terminal 2:**
 ```bash
-./run_client.sh <EC2_IP> 21
+./run_client.sh <EC2_IP> 2121
 > LS
 > GET small.txt
 ```
 
 **Terminal 3:**
 ```bash
-./run_client.sh <EC2_IP> 21
+./run_client.sh <EC2_IP> 2121
 > LS
 > PUT tests/test_data/medium.bin
 ```
@@ -145,7 +146,7 @@ threading.Thread(target=handle_client, args=(socket, addr), daemon=True).start()
 ```python
 # Environment variable for flexibility
 CONTROL_PORT = int(os.environ.get('FTP_PORT', 2121))
-# Local: 2121 | AWS: 21 (set via FTP_PORT=21)
+# Default: 2121. Set FTP_PORT=21 (or another port) if you have sudo privileges.
 ```
 
 **Connection Model:**

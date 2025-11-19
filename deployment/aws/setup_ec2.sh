@@ -4,16 +4,28 @@ set -e
 #============================================
 # CONFIGURATION
 #============================================
-# AWS Region - Update if deploying to different region
+# AWS Region - Update if deploying to different region.
+# For other regions (e.g., us-west-2, eu-west-1) change this value.
 REGION="us-east-1"
 
-# Amazon Linux 2023 AMI ID for us-east-1
-# To find AMI for your region, run:
-# aws ec2 describe-images --owners amazon --filters "Name=name,Values=al2023-ami-2023.*-x86_64" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId'
-AMI_ID="ami-0f00d706c4a80fd93"
+# Get the latest Amazon Linux 2023 AMI for the configured region
+echo "Looking up latest Amazon Linux 2023 AMI..."
+AMI_ID=$(aws ec2 describe-images \
+    --owners amazon \
+    --filters "Name=name,Values=al2023-ami-*" "Name=architecture,Values=x86_64" \
+    --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
+    --output text \
+    --region ${REGION})
+
+if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
+    echo "[ERROR] Could not find Amazon Linux 2023 AMI in region ${REGION}"
+    exit 1
+fi
+
+echo "[INFO] Using AMI: $AMI_ID"
 
 # EC2 Instance Configuration
-INSTANCE_TYPE="t3.micro"  # Free tier eligible, ~$0.0104/hour
+INSTANCE_TYPE="t3.micro"  # Free Tier eligible (750 hrs/mo). Uses burstable CPU credits.
 INSTANCE_NAME="ftp-server-project"
 
 # Security Configuration
