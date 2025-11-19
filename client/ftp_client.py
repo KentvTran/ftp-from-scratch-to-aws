@@ -83,7 +83,7 @@ def do_get(ctrl, filename):
         print("[WARN] expected 226, got:", last)
 
 def do_put(ctrl, filename):
-    # 기대 흐름: "PUT <f> SIZE <n>" → 서버 "200 READY PORT <p>" → 데이터 소켓으로 전송 → "226 ..."
+    # 기대 흐름: "PUT <f> SIZE <n>" → 서버 "200 OK PORT <p>" → 데이터 소켓으로 전송 → "226 ..."
     size = os.path.getsize(filename)
     ctrl.send_line(f"PUT {filename} SIZE {size}")
     first = ctrl.recv_line()

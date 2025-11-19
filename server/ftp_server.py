@@ -69,7 +69,7 @@ def handle_put(ctrl, fn, nbytes):
     path = os.path.join(BASE_DIR, name)
     n = int(nbytes)
     d, port = open_data_listener()
-    send_line(ctrl, f"200 READY PORT {port}")
+    send_line(ctrl, f"200 OK PORT {port}")
     data_sock, _ = d.accept()
     got = 0
     try:
