@@ -13,7 +13,7 @@ REGION="us-east-1"
 AMI_ID="ami-0f00d706c4a80fd93"
 
 # EC2 Instance Configuration
-INSTANCE_TYPE="t2.micro"  # Free tier eligible, ~$0.0116/hour
+INSTANCE_TYPE="t3.micro"  # Free tier eligible, ~$0.0104/hour
 INSTANCE_NAME="ftp-server-project"
 
 # Security Configuration
@@ -44,12 +44,12 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
     GITHUB_REPO=$(git config --get remote.origin.url)
     if [ -z "$GITHUB_REPO" ]; then
         echo "[ERROR] Could not detect git remote URL. Ensure you're in a git repository with a remote configured."
-        read -p "Enter your GitHub repo URL (https://github.com/username/ftp-project.git): " GITHUB_REPO
+        read -p "Enter your GitHub repo URL (https://github.com/username/ftp-from-scratch-to-aws.git): " GITHUB_REPO
     else
         echo "[OK] Detected repo: $GITHUB_REPO"
     fi
 else
-    read -p "Enter your GitHub repo URL (https://github.com/username/ftp-project.git): " GITHUB_REPO
+    read -p "Enter your GitHub repo URL (https://github.com/username/ftp-from-scratch-to-aws.git): " GITHUB_REPO
 fi
 
 # Step 1: Create key pair if it doesn't exist
@@ -116,7 +116,7 @@ ssh -i $KEY_PATH -o StrictHostKeyChecking=no ec2-user@$PUBLIC_DNS << EOF
     sudo yum update -y
     sudo yum install git python3 -y
     git clone $GITHUB_REPO
-    cd ftp-project
+    cd ftp-from-scratch-to-aws
     mkdir -p logs server_files
     chmod +x deployment/manual_deploy.sh deployment/stop_server.sh
     echo "[SUCCESS] Server setup complete!"
