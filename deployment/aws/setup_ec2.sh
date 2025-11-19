@@ -23,7 +23,7 @@ SG_NAME="FTP-SG"  # Security group name for FTP server
 
 # Network Port Configuration (per RFC 959 and project specification)
 SSH_PORT=22              # Standard SSH port for remote management
-FTP_CONTROL_PORT=21      # FTP command/control channel (standard port)
+FTP_CONTROL_PORT=2121   # FTP command/control channel (uses 2121 to avoid sudo requirement)
 FTP_DATA_PORT_MIN=20000  # Passive mode data transfer range start
 FTP_DATA_PORT_MAX=21000  # Passive mode data transfer range end
 

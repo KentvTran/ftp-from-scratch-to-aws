@@ -1,6 +1,6 @@
 import os, socket, threading, time
 
-HOST = "127.0.0.1"  # localhost
+HOST = "0.0.0.0"  # Accept connections from any interface
 CONTROL_PORT = int(os.environ.get('FTP_PORT', 2121))  # Default 2121 local, use FTP_PORT=21 for AWS
 BUFFER_SIZE = 4096
 

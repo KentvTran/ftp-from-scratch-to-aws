@@ -21,4 +21,4 @@ INSTANCE_ID=$(cat deployment/aws/instance_id.txt)
 PUBLIC_DNS=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicDnsName' --output text)
 
 echo "[INFO] Fetching server logs (Ctrl+C to exit)..."
-ssh -i $KEY_PATH ec2-user@$PUBLIC_DNS 'tail -f ~/ftp-project/server.log'
+ssh -i $KEY_PATH ec2-user@$PUBLIC_DNS 'tail -f ~/ftp-from-scratch-to-aws/server.log'
