@@ -45,13 +45,13 @@ PUBLIC_DNS=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Res
 echo "[3/4] Pulling latest code..."
 # Disable strict host key checking for ephemeral EC2 instance connections
 ssh -i $KEY_PATH -o StrictHostKeyChecking=no ec2-user@$PUBLIC_DNS << 'EOF'
-    cd ftp-project
+    cd ftp-from-scratch-to-aws
     git pull origin main
 EOF
 
 echo "[4/4] Starting FTP server..."
 ssh -i $KEY_PATH -o StrictHostKeyChecking=no ec2-user@$PUBLIC_DNS << 'EOF'
-    cd ftp-project
+    cd ftp-from-scratch-to-aws
     ./deployment/manual_deploy.sh
 EOF
 
