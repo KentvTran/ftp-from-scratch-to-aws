@@ -1,209 +1,154 @@
-# FTP Server Project - Part 1
+# FTP Server Project - Part 2 (AWS Multi-Client Deployment)
 
-## Team Members and Contact Information:
+## Team Members
 * Joshua [Jlopez0627@csu.fullerton.edu]: Protocol/Architecture Lead
 * Jamie [jjcastillojr21@csu.fullerton.edu]: Server Developer
 * Chanho [chanho0323@csu.fullerton.edu]: Client Developer
 * Kent [kentvtran@csu.fullerton.edu]: AWS/Deployment Engineer
 * Sean [Sdle@csu.fullerton.edu]: Testing/Documentation Lead
 
-## Programming Language:
-Python 3
+## Programming Language
+Python 3 (Standard Library Only)
 
-## How to Execute:
-1.  **Start the Server (Terminal 1):**
-    ```bash
-    $ cd p1-[userid]
-    $ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-    $ python3 server/ftp_server.py
-    ```
-    Server will listen on `localhost:2121`
-    (Note: Port 2121 is used instead of 21 to avoid requiring root privileges)
+---
 
-2.  **Start the Client (Terminal 2):**
-    ```bash
-    $ cd p1-[userid]
-    $ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-    $ python3 client/ftp_client.py localhost 2121
-    ```
+## How to Run
 
-3.  **Available Commands:**
-    * `LS` - List files on server
-    * `PUT <filename>` - Upload file to server
-    * `GET <filename>` - Download file from server
-    * `EXIT` - Close connection
+### Local Testing
 
-## Special Notes About This Submission:
+**Start Server:**
+```bash
+./run_server.sh
+```
 
-1.  **Port Configuration:**
-    * Control connection uses port 2121 (instead of standard port 21)
-    * This avoids requiring root/administrator privileges for testing
-    * Data connections use ephemeral ports in range 20000-21000
+**Connect Client:**
+```bash
+./run_client.sh localhost 2121
+```
 
-2.  **Project Structure:**
-    * `server/` contains server implementation
-    * `client/` contains client implementation
-    * `shared/` contains protocol definitions
-    * `tests/test_data/` contains test files for verification
-    * `docs/` contains protocol specification
+**Commands:** `LS`, `GET <file>`, `PUT <file>`, `EXIT`
 
-3.  **No External Dependencies:**
-    * Uses only Python standard library (socket module)
-    * No third-party packages required
+---
 
-## Testing:
+### AWS Deployment
 
-Test files are located in `tests/test_data/`:
-* `small.txt` (1.4KB)
-* `medium.bin` (1MB)
-* `large.iso` (10MB)
+**Start Server:**
+```bash
+./deployment/aws/start_server.sh
+# Outputs current EC2 public IP
+```
 
-**Example Test Sequence:**
-* LS 
-* PUT tests/test_data/small.txt 
-* LS 
-* GET small.txt 
-* GET nonexistent.txt (should show 550 error) 
-* EXIT
+**Connect Client:**
+```bash
+./run_client.sh <EC2_IP> 21
+```
 
-## Features Implemented:
-* Separate control (port 2121) and data (ports 20000-21000) connections
-* `GET` command for downloading files
-* `PUT` command for uploading files
-* `LS` command for listing server files
-* Error handling (550 File Not Found)
-* Proper response codes:
-    * 220 Welcome to Simple FTP Server
-    * 200 OK (command accepted)
-    * 226 Transfer complete
-    * 550 File not found/error
+**Stop Server:**
+```bash
+./deployment/aws/stop_instance.sh
+```
 
-## Technical Details:
-* Server stores uploaded files in `server_files/` directory
-* Client downloads files to current directory
-* Data connections use ephemeral ports in range 20000-21000
-* File transfers preserve data integrity
-* Server uses threading to support multiple concurrent clients
+**Check Status/IP:**
+```bash
+./deployment/aws/status.sh
+```
 
-## Tested and Verified:
-* Small files (1.4KB) - Upload/Download working
-* Medium files (1MB) - Upload/Download working
-* Large files (10MB) - Upload/Download working
-* Error handling - 550 errors for missing files
-* File integrity - No corruption during transfers
+---
 
-## Protocol Specification:
+## AWS Configuration
 
-**Control Connection:**
-* **Port:** 2121
-* **Commands:** `LS`, `GET <filename>`, `PUT <filename>`, `EXIT`
-* **Responses:** 220, 200, 226, 550
+- **Instance:** t2.micro (Amazon Linux 2023)
+- **Region:** us-east-1
+- **Control Port:** 21
+- **Data Ports:** 20000-21000
+- **Security Group:** Ports 22, 21, 20000-21000 open
 
-**Data Connection:**
-* **Port Range:** 20000-21000
-* **Protocol:** Separate connection for each file transfer
-* Server assigns ephemeral port and sends to client via control connection
+---
 
-## Implementation Notes:
-1.  The server uses threading to support multiple concurrent clients (ready for Part 2)
-2.  Client handles welcome banner (220) upon connection for protocol synchronization
-3.  All file transfers include size verification to ensure data integrity
-4.  Error codes follow FTP standard conventions
+## Features Implemented
 
-## Part 2: Deployment and Testing Results
-========================================
+**FTP Commands:**
+- `LS` - List server files
+- `GET` - Download files
+- `PUT` - Upload files
+- `EXIT` - Close connection
 
-### EC2 Instance Information
----------------------------
-EC2 Instance IP: [INSERT_EC2_IP_HERE]
-EC2 Instance Type: t2.micro
-Control Port: 2121
-Data Port Range: 20000-21000
+**Multi-Client Support:**
+- Threading-based concurrent client handling
+- Tested with 5+ simultaneous connections
+- Separate control and data connections per client
 
-### Deployment Information
--------------------------
-Deployment Date: [INSERT_DATE_HERE]
-Deployed By: [INSERT_NAME_HERE]
-Git Commit: [INSERT_COMMIT_HASH_HERE]
+**Protocol:**
+- Control connection: Port 21 (AWS) / 2121 (local)
+- Data connections: Ephemeral ports 20000-21000
+- Response codes: 200 (OK), 226 (Complete), 550 (Error)
 
-### Server Access
----------------
-SSH Command:
-  ssh -i [YOUR_KEY.pem] ec2-user@[INSERT_EC2_IP_HERE]
+---
 
-Server Start Command:
-  cd /path/to/project
-  ./deployment/manual_deploy.sh
+## Testing Multi-Client Functionality
 
-Server Stop Command:
-  ./deployment/stop_server.sh
+### Concurrent Operations Test
+Open 3+ terminals simultaneously:
 
-### Test Results
---------------
+**Terminal 1:**
+```bash
+./run_client.sh <EC2_IP> 21
+> PUT tests/test_data/small.txt
+```
 
-#### Test 1: Concurrent PUT Operations
-Status: [PASS/FAIL]
-Description: 3+ clients uploading files simultaneously
-Results:
-  - Client 1: [PASS/FAIL] - [Details]
-  - Client 2: [PASS/FAIL] - [Details]
-  - Client 3: [PASS/FAIL] - [Details]
-Notes: [Any observations or issues]
+**Terminal 2:**
+```bash
+./run_client.sh <EC2_IP> 21
+> LS
+> GET small.txt
+```
 
-#### Test 2: Mixed Operations (GET + PUT + LS)
-Status: [PASS/FAIL]
-Description: 3+ clients performing different operations simultaneously
-Results:
-  - Client 1 (LS → PUT → LS): [PASS/FAIL] - [Details]
-  - Client 2 (GET → PUT): [PASS/FAIL] - [Details]
-  - Client 3 (LS → GET → LS): [PASS/FAIL] - [Details]
-Notes: [Any observations or issues]
+**Terminal 3:**
+```bash
+./run_client.sh <EC2_IP> 21
+> LS
+> PUT tests/test_data/medium.bin
+```
 
-#### Test 3: Large File Transfers
-Status: [PASS/FAIL]
-Description: Multiple clients handling large files (10MB+)
-Results:
-  - Large file upload: [PASS/FAIL] - [Time taken, file size]
-  - Large file download: [PASS/FAIL] - [Time taken, file size]
-  - File integrity check: [PASS/FAIL] - [Checksum verification]
-Notes: [Any observations or issues]
+All operations should complete successfully without conflicts.
 
-#### Test 4: Error Cases
-Status: [PASS/FAIL]
-Description: Error handling with concurrent clients
-Results:
-  - GET nonexistent file: [PASS/FAIL] - [Error code received]
-  - Valid operations during errors: [PASS/FAIL] - [Details]
-Notes: [Any observations or issues]
+---
 
-#### Test 5: Stress Test (Maximum Concurrent Clients)
-Status: [PASS/FAIL]
-Description: Server limits with 5-10 concurrent clients
-Results:
-  - Maximum clients tested: [NUMBER]
-  - Server stability: [STABLE/UNSTABLE]
-  - Response times: [Average response time]
-Notes: [Any observations or issues]
+## Project Structure
+```
+ftp-project/
+├── server/ftp_server.py          # Multi-threaded server
+├── client/ftp_client.py          # Client application
+├── shared/protocol.py            # Protocol constants
+├── deployment/
+│   ├── aws/                      # AWS automation scripts
+│   ├── manual_deploy.sh          # Runs on EC2
+│   └── stop_server.sh            # Runs on EC2
+├── tests/
+│   ├── test_multiclient.py       # Automated tests
+│   └── test_data/                # Test files
+├── run_server.sh                 # Local server launcher
+└── run_client.sh                 # Local client launcher
+```
 
-### Performance Metrics
----------------------
-Average Response Time (LS): [INSERT_TIME]ms
-Average Upload Speed (1MB): [INSERT_SPEED] MB/s
-Average Download Speed (1MB): [INSERT_SPEED] MB/s
-Maximum Concurrent Clients: [INSERT_NUMBER]
-Server Uptime: [INSERT_TIME]
+---
 
-### Issues Encountered
--------------------
-[LIST ANY ISSUES, BUGS, OR LIMITATIONS DISCOVERED DURING TESTING]
+## Design Implementation
 
-### Test Execution Log
---------------------
-Date: [INSERT_DATE]
-Tester: [INSERT_NAME]
-Command Used: python3 tests/test_multiclient.py
-Output: [PASTE_RELEVANT_OUTPUT_HERE]
+**Multi-Threading:**
+```python
+# Each client runs in separate thread
+threading.Thread(target=handle_client, args=(socket, addr), daemon=True).start()
+```
 
-### Additional Notes
-------------------
-[ANY ADDITIONAL OBSERVATIONS, RECOMMENDATIONS, OR COMMENTS]
+**Port Configuration:**
+```python
+# Environment variable for flexibility
+CONTROL_PORT = int(os.environ.get('FTP_PORT', 2121))
+# Local: 2121 | AWS: 21 (set via FTP_PORT=21)
+```
+
+**Connection Model:**
+- Persistent control connection for commands
+- Separate data connection per file transfer
+- Thread-safe operations

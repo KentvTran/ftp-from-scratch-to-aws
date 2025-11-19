@@ -1,10 +1,18 @@
 import os
 import sys
 
-from client.config import HOST, CONTROL_PORT, BUFFER_SIZE
-from client.command_parser import parse_command
-from client.connection_handler import ControlConn, open_data_conn
-from shared import protocol
+try:
+    from client.config import HOST, CONTROL_PORT, BUFFER_SIZE
+    from client.command_parser import parse_command
+    from client.connection_handler import ControlConn, open_data_conn
+    from shared import protocol
+except ModuleNotFoundError:
+    from config import HOST, CONTROL_PORT, BUFFER_SIZE
+    from command_parser import parse_command
+    from connection_handler import ControlConn, open_data_conn
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from shared import protocol
 
 def do_ls(ctrl):
     # 기대 응답: "200 OK PORT <p>" → 데이터 소켓으로 목록 → "226 ..."

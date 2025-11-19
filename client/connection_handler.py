@@ -1,5 +1,9 @@
 import socket
-from client.config import BUFFER_SIZE, TIMEOUT
+
+try:
+    from client.config import BUFFER_SIZE, TIMEOUT
+except ModuleNotFoundError:
+    from config import BUFFER_SIZE, TIMEOUT
 
 class ControlConn:
     def __init__(self, host, port):

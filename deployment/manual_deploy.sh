@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "[1/3] Pulling latest code from git..."
-git pull
+git pull origin main
 
 echo "[2/3] Stopping old server processes..."
 # Kill any existing FTP server processes
@@ -23,7 +23,7 @@ sleep 2
 echo "[3/3] Starting new server..."
 # Set PYTHONPATH and start server in background
 export PYTHONPATH="${PYTHONPATH}:${PROJECT_ROOT}"
-nohup python3 server/ftp_server.py > server.log 2>&1 &
+FTP_PORT=21 nohup python3 server/ftp_server.py > server.log 2>&1 &
 
 # Get the PID
 SERVER_PID=$!
