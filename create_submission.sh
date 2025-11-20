@@ -40,7 +40,6 @@ INCLUDE_FILES=(
     "deployment/"
     "docs/"
     "README.md"
-    "README.txt"
     ".gitignore"
 )
 
