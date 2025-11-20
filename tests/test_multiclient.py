@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import socket
+import subprocess
 from pathlib import Path
 
 # Add project root to path
@@ -19,14 +20,68 @@ from client.connection_handler import ControlConn, open_data_conn
 from client.config import HOST, CONTROL_PORT, BUFFER_SIZE
 from shared import protocol
 
+def get_aws_ip():
+    """Try to automatically get the current AWS EC2 public IP"""
+    try:
+        status_script = project_root / "deployment" / "aws" / "status.sh"
+        if status_script.exists():
+            result = subprocess.run(
+                [str(status_script)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=str(project_root)
+            )
+            if result.returncode == 0:
+                # Parse the output for PublicIpAddress
+                for line in result.stdout.split('\n'):
+                    if 'PublicIpAddress' in line:
+                        # Format: |  PublicIpAddress    |  1.2.3.4  |
+                        parts = line.split('|')
+                        if len(parts) >= 3:
+                            ip = parts[2].strip()
+                            if ip and ip != 'None':
+                                print(f"🔍 Auto-detected AWS IP: {ip}")
+                                return ip
+    except Exception as e:
+        pass  # Fall through to environment variable
+    
+    return None
+
+def get_server_config():
+    """Get server host and port, trying AWS auto-detection first"""
+    # Priority:
+    # 1. Environment variables (user override)
+    # 2. Auto-detect from AWS status
+    # 3. Default from config
+    
+    host = os.getenv("FTP_HOST")
+    port = int(os.getenv("FTP_PORT", CONTROL_PORT))
+    
+    if not host or host == HOST:
+        # Try to auto-detect AWS IP
+        aws_ip = get_aws_ip()
+        if aws_ip:
+            host = aws_ip
+            print(f"✅ Using auto-detected AWS server: {host}:{port}")
+        else:
+            host = HOST
+            if host == "localhost":
+                print(f"⚠️  Using localhost - make sure server is running locally")
+            print(f"💡 Tip: Run './deployment/aws/start_server.sh' to start AWS server")
+            print(f"   Or set manually: export FTP_HOST=<your-aws-ip>")
+    else:
+        print(f"✅ Using environment variable: {host}:{port}")
+    
+    return host, port
+
 # Test configuration
-SERVER_HOST = os.getenv("FTP_HOST", HOST)
-SERVER_PORT = int(os.getenv("FTP_PORT", CONTROL_PORT))
+SERVER_HOST, SERVER_PORT = get_server_config()
 TEST_DATA_DIR = project_root / "tests" / "test_data"
 
 def check_server_connectivity(host, port, timeout=3):
     """Check if server is accessible before running tests"""
-    print(f"Checking server connectivity to {host}:{port}...")
+    print(f"\nChecking server connectivity to {host}:{port}...")
     
     # Check if host is still a placeholder
     if host.startswith("[") and host.endswith("]"):
@@ -54,12 +109,9 @@ def check_server_connectivity(host, port, timeout=3):
             print("  2. Incorrect host/port")
             print("  3. Firewall blocking connection")
             print("  4. Server is not accessible from this network")
-            print("\nTo start the server locally:")
-            print("  cd /path/to/project")
-            print("  export PYTHONPATH=\"${PYTHONPATH}:$(pwd)\"")
-            print("  python3 server/ftp_server.py")
-            print("\nOr for EC2 deployment:")
-            print("  ./deployment/manual_deploy.sh")
+            print("\nTo start the server:")
+            print("  AWS: ./deployment/aws/start_server.sh")
+            print("  Local: ./run_server.sh")
             return False
     except socket.gaierror as e:
         print(f"\n❌ ERROR: Cannot resolve hostname '{host}'")
@@ -221,7 +273,7 @@ def test_concurrent_put():
     results_list = []
     operations_list = [
         [{"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}],
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.bin")}],
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.csv")}],
         [{"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}],  # Same file, different client
     ]
     
@@ -252,14 +304,10 @@ def test_mixed_operations():
     print("\n=== Test 2: Mixed Operations (GET+PUT+LS) ===")
     threads = []
     results_list = []
-    # Fixed: Ensure files are uploaded before GET operations
-    # Client 1: Upload small.txt, then list
-    # Client 2: Upload medium.bin, then list (to verify)
-    # Client 3: List, then GET both files (they should exist by now)
     operations_list = [
         [{"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}, {"type": "LS"}],
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.bin")}, {"type": "LS"}],
-        [{"type": "LS"}, {"type": "GET", "filename": "small.txt"}, {"type": "GET", "filename": "medium.bin"}, {"type": "LS"}],
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.csv")}, {"type": "LS"}],
+        [{"type": "LS"}, {"type": "GET", "filename": "small.txt"}, {"type": "GET", "filename": "medium.csv"}, {"type": "LS"}],
     ]
     
     def make_worker_with_result(idx, ops, results):
@@ -289,12 +337,10 @@ def test_large_files():
     print("\n=== Test 3: Large Files ===")
     threads = []
     results_list = []
-    # Fixed: Ensure file is uploaded first, then downloaded
-    # Client 1 uploads large file, Client 2 uploads medium file, Client 3 downloads large file (after upload)
     operations_list = [
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "large.iso")}],
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.bin")}],
-        [{"type": "LS"}, {"type": "GET", "filename": "large.iso"}],  # LS first to ensure file exists
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "large.txt")}],
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.csv")}],
+        [{"type": "LS"}, {"type": "GET", "filename": "large.txt"}],
     ]
     
     def make_worker_with_result(idx, ops, results):
@@ -325,9 +371,9 @@ def test_error_cases():
     threads = []
     results_list = []
     operations_list = [
-        [{"type": "GET", "filename": "nonexistent_file.txt"}],  # Should fail
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}],  # Should succeed
-        [{"type": "GET", "filename": "nonexistent_file2.txt"}],  # Should fail
+        [{"type": "GET", "filename": "nonexistent_file.txt"}],
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}],
+        [{"type": "GET", "filename": "nonexistent_file2.txt"}],
     ]
     
     def make_worker_with_result(idx, ops, results):
@@ -345,11 +391,8 @@ def test_error_cases():
     for t in threads:
         t.join()
     
-    # Report results (note: errors are expected for GET nonexistent files)
-    # Client 2 should succeed (PUT), clients 1 and 3 should fail (GET nonexistent)
-    # Count operations: Client 1 (GET fail), Client 2 (PUT success), Client 3 (GET fail)
+    # Report results
     total_ops = sum(len(r.get("results", [])) for r in results_list)
-    # Expected: 1 success (PUT), 2 failures (GET nonexistent)
     expected_success = 1
     expected_failures = 2
     actual_success = sum(1 for r in results_list for op in r.get("results", []) if op.get("status") == "OK")
@@ -369,18 +412,12 @@ def test_5_client_stress():
     threads = []
     results_list = []
     
-    # Create diverse operations for 5 clients to stress test the server
     operations_list = [
-        # Client 1: Multiple LS operations
         [{"type": "LS"}, {"type": "LS"}, {"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}, {"type": "LS"}],
-        # Client 2: Upload and download
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.bin")}, {"type": "GET", "filename": "medium.bin"}],
-        # Client 3: Mixed operations
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.csv")}, {"type": "GET", "filename": "medium.csv"}],
         [{"type": "LS"}, {"type": "PUT", "filename": str(TEST_DATA_DIR / "small.txt")}, {"type": "GET", "filename": "small.txt"}],
-        # Client 4: Large file operations
-        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "large.iso")}, {"type": "LS"}],
-        # Client 5: Rapid operations
-        [{"type": "LS"}, {"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.bin")}, {"type": "LS"}, {"type": "GET", "filename": "medium.bin"}],
+        [{"type": "PUT", "filename": str(TEST_DATA_DIR / "large.txt")}, {"type": "LS"}],
+        [{"type": "LS"}, {"type": "PUT", "filename": str(TEST_DATA_DIR / "medium.csv")}, {"type": "LS"}, {"type": "GET", "filename": "medium.csv"}],
     ]
     
     def make_worker_with_result(idx, ops, results):
@@ -395,7 +432,6 @@ def test_5_client_stress():
         threads.append(t)
         t.start()
     
-    # Wait for all threads to complete
     for t in threads:
         t.join()
     
@@ -428,7 +464,7 @@ def main():
         
         results1 = test_concurrent_put()
         all_test_results.append(("Test 1: Concurrent PUT", results1))
-        time.sleep(1)  # Brief pause between test suites
+        time.sleep(1)
         
         results2 = test_mixed_operations()
         all_test_results.append(("Test 2: Mixed Operations", results2))
@@ -458,9 +494,7 @@ def main():
             test_passed = sum(sum(1 for op in r.get("results", []) if op.get("status") == "OK") for r in results)
             test_failed = sum(sum(1 for op in r.get("results", []) if op.get("status") == "FAIL") for r in results)
             
-            # Special handling for Test 4 (Error Cases) - failures are expected
             if "Error Cases" in test_name:
-                # Expected: 1 success (PUT), 2 failures (GET nonexistent)
                 if test_passed == 1 and test_failed == 2:
                     status = "✅ PASS (expected failures)"
                 else:
@@ -470,7 +504,6 @@ def main():
             
             print(f"{test_name}: {status}")
             
-            # Show detailed failures for non-error-case tests
             if "Error Cases" not in test_name and test_failed > 0:
                 print(f"  Failed operations:")
                 for r in results:
@@ -484,9 +517,7 @@ def main():
             failed_ops += test_failed
         
         print("=" * 50)
-        # For overall count, exclude expected failures from Test 4
-        # Test 4 has 2 expected failures, so subtract those from total
-        expected_failures = 2  # From Test 4
+        expected_failures = 2
         adjusted_total = total_ops - expected_failures
         adjusted_passed = passed_ops
         
@@ -512,4 +543,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
