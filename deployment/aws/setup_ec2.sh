@@ -8,6 +8,9 @@ set -e
 # For other regions (e.g., us-west-2, eu-west-1) change this value.
 REGION="us-east-1"
 
+# GitHub Repository
+GITHUB_REPO="https://github.com/KentvTran/ftp-from-scratch-to-aws"
+
 # Get the latest Amazon Linux 2023 AMI for the configured region
 echo "Looking up latest Amazon Linux 2023 AMI..."
 AMI_ID=$(aws ec2 describe-images \
@@ -50,19 +53,7 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "=== FTP Server EC2 One-Time Setup ==="
-
-# Auto-detect GitHub repo URL from git config, or prompt if not found
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    GITHUB_REPO=$(git config --get remote.origin.url)
-    if [ -z "$GITHUB_REPO" ]; then
-        echo "[ERROR] Could not detect git remote URL. Ensure you're in a git repository with a remote configured."
-        read -p "Enter your GitHub repo URL (https://github.com/username/ftp-from-scratch-to-aws.git): " GITHUB_REPO
-    else
-        echo "[OK] Detected repo: $GITHUB_REPO"
-    fi
-else
-    read -p "Enter your GitHub repo URL (https://github.com/username/ftp-from-scratch-to-aws.git): " GITHUB_REPO
-fi
+echo "[OK] Using repo: $GITHUB_REPO"
 
 # Step 1: Create key pair if it doesn't exist
 echo "[1/4] Checking key pair..."
