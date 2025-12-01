@@ -41,6 +41,8 @@ INCLUDE_FILES=(
     "docs/"
     "README.md"
     ".gitignore"
+    "run_client.sh"
+    "run_server.sh"
 )
 
 # Create temporary directory for clean archive
